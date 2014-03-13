@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Stream Desktop (only audio)
+GenericName=Stream Desktop (only audio)
+Comment=Streams the desktop (audio & video) to the network.
+Exec=/path/to/stream_desktop.py --gui --audio-only
+Terminal=false
+Type=Application
+StartupNotify=true
+Icon=/path/to/icon.png
+Category=
