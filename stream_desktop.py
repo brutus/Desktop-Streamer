@@ -6,8 +6,12 @@ Capture *audio* and *video* from desktop and stream it to the local network.
 
 Usage:
   stream_desktop.py [-n|--gui] [-a|-A] [options]
+  stream_desktop.py --version
+  stream_desktop.py --help
 
 Options:
+ -h, --help  show help message
+ --version  show version
  -n, --show-commands  don't do anything, just show the commands
  --gui  show a GUI to start and stop the stream
  -a, --audio-only  only export audio
@@ -15,7 +19,7 @@ Options:
  -f <INT>, --framerate=<INT>  the framerate to use for the stream [default: 25]
  -r <WIDTHxHIGHT>, --res-in=<WIDTHxHIGHT>  the size of the capture area [default: 1920x1080]
  -R <WIDTHxHIGHT>, --res-out=<WIDTHxHIGHT>  transcode to this output resolution [default: 1280x720]
- -p <INT>, --port=<INT>  serv the stream on this port on all devices [default: 1312]
+ -p <INT>, --port=<INT>  serve the stream on this port on all devices [default: 1312]
 
 """
 
@@ -31,9 +35,33 @@ from subprocess import PIPE, Popen
 
 
 __VERSION__ = '0.2'
+__author__ = 'Brutus [DMC] <brutus.dmc@googlemail.com>'
+__license__ = 'GNU General Public License v3 or above - '\
+              'http://www.opensource.org/licenses/gpl-3.0.html'
 
 
 class DeskStreamer(object):
+
+  """
+  Stream the desktop to the network with the ``avconv`` and ``vlc`` commands.
+
+  The commandlines needed for those two commands are build from the arguments
+  to the :meth:`__init__` method with :meth:`setup`. The final commandlines
+  are stored as lists in :attr:`cmd_avconv` and :attr:`cmd_vlc`.
+
+  You can get the commands as strings trough :attr:`cmd_avconv_as_string` and
+  :attr:`cmd_vlc_as_string`.
+
+  Use :meth:`start` to start streaming and :meth:`stop` to stop it.
+
+  .. note::
+
+    The attributes used to build the commandlines are set on instanciation.
+
+    You can change them later too, but must call :meth:`setup` afterwards, or
+    the commands wont reflect your change.
+
+  """
 
   def __init__(
     self, use_audio=True, use_video=True,
@@ -46,49 +74,11 @@ class DeskStreamer(object):
     self.res_in = res_in if res_in else DeskStreamer.get_screensize()
     self.res_out = res_out if res_out else self.res_in
     self.port = int(port)
-    # build commands
-    self.cmd_av, self.cmd_vlc = DeskStreamer.build_commands(
-      self.use_audio, self.use_video,
-      self.framerate, self.res_in, self.res_out,
-      self.port
-    )
+    self.setup()
 
-  def start(self):
-    self.proc_av = Popen(self.cmd_av, stdout=PIPE)
-    self.proc_vlc = Popen(self.cmd_vlc, stdin=self.proc_av.stdout, stdout=PIPE)
-    self.proc_av.stdout.close()
-
-  def stop(self, seconds=2):
-    self.proc_av.terminate()
-    self.proc_vlc.terminate()
-    time.sleep(seconds)
-    while self.proc_av.poll() is None or self.proc_vlc.poll() is None:
-      if self.proc_av.poll() is None:
-        self.proc_av.kill()
-      if self.proc_vlc.poll() is None:
-        self.proc_vlc.kill()
-      time.sleep(seconds)
-
-  @property
-  def cmd_str_av(self):
-    return " ".join(self.cmd_av)
-
-  @property
-  def cmd_str_vlc(self):
-    return " ".join(self.cmd_vlc)
-
-  @property
-  def returncode(self):
-    return self.proc_vlc.returncode
-
-  @staticmethod
-  def build_commands(
-    use_audio, use_video,
-    framerate, res_in, res_out,
-    port
-  ):
+  def setup(self):
     """
-    Return tuple of formated `avconv` and `vlc` commandlines, each as a list.
+    Build *cmd_avconv* and *cmd_vlc* commandlines from settings.
 
     """
     # command templates
@@ -99,26 +89,52 @@ class DeskStreamer(object):
       "-f x11grab -r {framerate} -s {res_in} -i :0.0 "
       "-vcodec libx264 -preset ultrafast -s {res_out}"
     ).format(
-      framerate=framerate, res_in=res_in, res_out=res_out
+      framerate=self.framerate, res_in=self.res_in, res_out=self.res_out
     )
-    cmd_av = (
+    cmd_avconv = (
       "avconv {audio} {video} -threads 0 -f mpegts -"
     ).format(
-      audio=(av_audio if use_audio else ''),
-      video=(av_video if use_video else ''),
+      audio=(av_audio if self.use_audio else ''),
+      video=(av_video if self.use_video else '')
     )
     cmd_vlc = (
       "cvlc "
       " -I dummy - "
       "--sout=#std{{access=http,mux=ts,dst=:{port}}}"
     ).format(
-      port=port
+      port=self.port
     )
     # build command list
-    return (
-      shlex.split(cmd_av, posix=False),
-      shlex.split(cmd_vlc, posix=False)
-    )
+    self.cmd_avconv = shlex.split(cmd_avconv, posix=False)
+    self.cmd_vlc = shlex.split(cmd_vlc, posix=False)
+
+  def start(self):
+    self.proc_avconv = Popen(self.cmd_avconv, stdout=PIPE)
+    self.proc_vlc = Popen(self.cmd_vlc, stdin=self.proc_avconv.stdout, stdout=PIPE)
+    self.proc_avconv.stdout.close()
+
+  def stop(self, seconds=2):
+    self.proc_avconv.terminate()
+    self.proc_vlc.terminate()
+    time.sleep(seconds)
+    while self.proc_avconv.poll() is None or self.proc_vlc.poll() is None:
+      if self.proc_avconv.poll() is None:
+        self.proc_avconv.kill()
+      if self.proc_vlc.poll() is None:
+        self.proc_vlc.kill()
+      time.sleep(seconds)
+
+  @property
+  def cmd_avconv_as_string(self):
+    return " ".join(self.cmd_avconv)
+
+  @property
+  def cmd_vlc_as_string(self):
+    return " ".join(self.cmd_vlc)
+
+  @property
+  def returncode(self):
+    return self.proc_vlc.returncode
 
   @staticmethod
   def get_screensize(as_string=True):
@@ -136,17 +152,17 @@ class DeskStreamer(object):
 
 def show_cli(streamer):
   """
-  Run *streamer* in CLI interface.
+  Run *streamer* from CLI interface.
 
   """
-  def _raise_ki_on_signal(signal, frame):
+  def _raise_on_signal(signal, frame):
     """
     Catch signal and raise a *KeyboardInterrupt*.
 
     """
     raise KeyboardInterrupt
   try:
-    signal.signal(signal.SIGINT, _raise_ki_on_signal)  # register signal
+    signal.signal(signal.SIGINT, _raise_on_signal)  # register signal
     streamer.start()
     while True:
       pass
@@ -156,7 +172,7 @@ def show_cli(streamer):
 
 def show_gui(streamer):
   """
-  Run *streamer* in GUI interface.
+  Run *streamer* from GUI interface.
 
   """
   def _toggle_stream(button, streamer):
@@ -165,11 +181,11 @@ def show_gui(streamer):
 
     """
     if button['text'] == 'Start Stream':
-      button['text'] = 'Stop Stream'
       streamer.start()
+      button['text'] = 'Stop Stream'
     else:
-      button['text'] = 'Start Stream'
       streamer.stop()
+      button['text'] = 'Start Stream'
   root = tk.Tk()
   root.title("Desktop Streamer")
   button = tk.Button(
@@ -188,13 +204,13 @@ def main(show_commands=False, gui=False, **cmd_options):
   If *show_commands* is set, only print the commands, don't run them.
   If *gui* is set, show a window too start and stop the stream.
 
-  :param cmd_options: arguments for :meth:`DeskStreamer.build_commands`
+  :param cmd_options: arguments for :class:`DeskStreamer`.
 
   """
   streamer = DeskStreamer(**cmd_options)
   if show_commands:
-    print(streamer.cmd_str_av)
-    print(streamer.cmd_str_vlc)
+    print(streamer.cmd_avconv_as_string)
+    print(streamer.cmd_vlc_as_string)
   elif gui:
     show_gui(streamer)
   else:
@@ -216,6 +232,8 @@ def _get_args(argv=None):
       args['use_video'] = False if v else True
     elif arg == 'no_audio':
       args['use_audio'] = False if v else True
+    elif arg == 'help' or arg == 'version':
+      pass
     else:
       args[arg] = v
   return args
