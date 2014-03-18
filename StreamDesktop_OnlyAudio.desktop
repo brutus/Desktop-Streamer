@@ -6,5 +6,5 @@ Exec=/path/to/stream_desktop.py --gui --audio-only
 Terminal=false
 Type=Application
 StartupNotify=true
-Icon=/path/to/icon.png
+Icon=/path/to/icon.svg
 Category=
