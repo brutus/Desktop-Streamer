@@ -71,7 +71,9 @@ class DeskStreamer(object):
     self.use_audio = bool(use_audio)
     self.use_video = bool(use_video)
     self.framerate = int(framerate)
-    self.res_in = res_in if res_in else DeskStreamer.get_screensize()
+    self.res_in = res_in if res_in else DeskStreamer.get_screensize(
+      as_string=True
+    )
     self.res_out = res_out if res_out else self.res_in
     self.port = int(port)
     self.setup()
@@ -113,16 +115,21 @@ class DeskStreamer(object):
     self.proc_vlc = Popen(self.cmd_vlc, stdin=self.proc_avconv.stdout, stdout=PIPE)
     self.proc_avconv.stdout.close()
 
-  def stop(self, seconds=2):
-    self.proc_avconv.terminate()
-    self.proc_vlc.terminate()
-    time.sleep(seconds)
-    while self.proc_avconv.poll() is None or self.proc_vlc.poll() is None:
+  def stop(self, seconds=3):
+    try:
       if self.proc_avconv.poll() is None:
-        self.proc_avconv.kill()
+        self.proc_avconv.terminate()
       if self.proc_vlc.poll() is None:
-        self.proc_vlc.kill()
+        self.proc_vlc.terminate()
       time.sleep(seconds)
+      while self.proc_avconv.poll() is None or self.proc_vlc.poll() is None:
+        if self.proc_avconv.poll() is None:
+          self.proc_avconv.kill()
+        if self.proc_vlc.poll() is None:
+          self.proc_vlc.kill()
+        time.sleep(seconds)
+    except AttributeError:
+      pass
 
   @property
   def cmd_avconv_as_string(self):
@@ -137,7 +144,7 @@ class DeskStreamer(object):
     return self.proc_vlc.returncode
 
   @staticmethod
-  def get_screensize(as_string=True):
+  def get_screensize(as_string=False):
     """
     Return screensize as *width*, *height* tuple.
 
