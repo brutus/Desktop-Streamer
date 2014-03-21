@@ -115,16 +115,21 @@ class DeskStreamer(object):
     self.proc_vlc = Popen(self.cmd_vlc, stdin=self.proc_avconv.stdout, stdout=PIPE)
     self.proc_avconv.stdout.close()
 
-  def stop(self, seconds=2):
-    self.proc_avconv.terminate()
-    self.proc_vlc.terminate()
-    time.sleep(seconds)
-    while self.proc_avconv.poll() is None or self.proc_vlc.poll() is None:
+  def stop(self, seconds=3):
+    try:
       if self.proc_avconv.poll() is None:
-        self.proc_avconv.kill()
+        self.proc_avconv.terminate()
       if self.proc_vlc.poll() is None:
-        self.proc_vlc.kill()
+        self.proc_vlc.terminate()
       time.sleep(seconds)
+      while self.proc_avconv.poll() is None or self.proc_vlc.poll() is None:
+        if self.proc_avconv.poll() is None:
+          self.proc_avconv.kill()
+        if self.proc_vlc.poll() is None:
+          self.proc_vlc.kill()
+        time.sleep(seconds)
+    except AttributeError:
+      pass
 
   @property
   def cmd_avconv_as_string(self):
