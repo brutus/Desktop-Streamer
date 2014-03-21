@@ -71,7 +71,9 @@ class DeskStreamer(object):
     self.use_audio = bool(use_audio)
     self.use_video = bool(use_video)
     self.framerate = int(framerate)
-    self.res_in = res_in if res_in else DeskStreamer.get_screensize()
+    self.res_in = res_in if res_in else DeskStreamer.get_screensize(
+      as_string=True
+    )
     self.res_out = res_out if res_out else self.res_in
     self.port = int(port)
     self.setup()
@@ -137,7 +139,7 @@ class DeskStreamer(object):
     return self.proc_vlc.returncode
 
   @staticmethod
-  def get_screensize(as_string=True):
+  def get_screensize(as_string=False):
     """
     Return screensize as *width*, *height* tuple.
 
