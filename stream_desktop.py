@@ -115,21 +115,21 @@ class DeskStreamer(object):
     self.proc_vlc = Popen(self.cmd_vlc, stdin=self.proc_avconv.stdout, stdout=PIPE)
     self.proc_avconv.stdout.close()
 
-  def stop(self, seconds=3):
-    try:
-      if self.proc_avconv.poll() is None:
-        self.proc_avconv.terminate()
-      if self.proc_vlc.poll() is None:
-        self.proc_vlc.terminate()
-      time.sleep(seconds)
-      while self.proc_avconv.poll() is None or self.proc_vlc.poll() is None:
-        if self.proc_avconv.poll() is None:
-          self.proc_avconv.kill()
-        if self.proc_vlc.poll() is None:
-          self.proc_vlc.kill()
-        time.sleep(seconds)
-    except AttributeError:
-      pass
+  def stop(self, seconds=2):
+    processes = ('proc_avconv', 'proc_vlc')
+    terminated = False
+    # terminate created processes:
+    processes = filter(None, [getattr(self, proc) for proc in processes])
+    while processes:
+      # stop those still running:
+      if terminated:
+        map(lambda proc: proc.kill(), processes)
+      else:
+        map(lambda proc: proc.terminate(), processes)
+        terminated = True
+      time.sleep(seconds)  # give them some time...
+      # keep those that are still running
+      processes = [proc for proc in processes if proc.poll() is None]
 
   @property
   def cmd_avconv_as_string(self):
@@ -138,10 +138,6 @@ class DeskStreamer(object):
   @property
   def cmd_vlc_as_string(self):
     return " ".join(self.cmd_vlc)
-
-  @property
-  def returncode(self):
-    return self.proc_vlc.returncode
 
   @staticmethod
   def get_screensize(as_string=False):
@@ -162,19 +158,10 @@ def show_cli(streamer):
   Run *streamer* from CLI interface.
 
   """
-  def _raise_on_signal(signal, frame):
-    """
-    Catch signal and raise a *KeyboardInterrupt*.
-
-    """
-    raise KeyboardInterrupt
-  try:
-    signal.signal(signal.SIGINT, _raise_on_signal)  # register signal
-    streamer.start()
-    while True:
-      pass
-  except KeyboardInterrupt:
-    streamer.stop()
+  # register signal: stop *streamer* on SIGINT
+  signal.signal(signal.SIGINT, lambda signal, frame: streamer.stop())
+  streamer.start()  # start streaming
+  signal.pause()  # sleep till signal
 
 
 def show_gui(streamer):
