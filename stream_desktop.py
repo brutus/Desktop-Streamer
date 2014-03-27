@@ -16,7 +16,7 @@ import shlex
 import signal
 import Tkinter as tk
 
-from subprocess import PIPE, Popen
+from subprocess import PIPE, Popen, check_output, CalledProcessError
 from argparse import ArgumentParser
 
 
@@ -49,11 +49,21 @@ class DeskStreamer(object):
 
   """
 
+  COMMANDS = {
+    'avconv': None,
+    'cvlc': None
+  }
+
+  PROCESSES = ('proc_avconv', 'proc_vlc')
+
   def __init__(
     self, audio=True, video=True,
     framerate=25, res_in=None, res_out=None,
     port=1312
   ):
+    # setup commands
+    self.setup_command_paths()
+    # settings
     self.audio = bool(audio)
     self.video = bool(video)
     self.framerate = int(framerate)
@@ -63,6 +73,14 @@ class DeskStreamer(object):
     self.res_out = res_out if res_out else self.res_in
     self.port = int(port)
     self.setup()
+
+  def setup_command_paths(self):
+    """
+    Get full paths to the used commands.
+
+    """
+    for cmd in self.COMMANDS:
+      self.COMMANDS[cmd] = DeskStreamer.get_command_path(cmd)
 
   def setup(self):
     """
@@ -80,16 +98,18 @@ class DeskStreamer(object):
       framerate=self.framerate, res_in=self.res_in, res_out=self.res_out
     )
     cmd_avconv = (
-      "avconv {audio} {video} -threads 0 -f mpegts -"
+      "{cmd} {audio} {video} -threads 0 -f mpegts -"
     ).format(
+      cmd=self.COMMANDS['avconv'],
       audio=(av_audio if self.audio else ''),
       video=(av_video if self.video else '')
     )
     cmd_vlc = (
-      "cvlc "
-      " -I dummy - "
-      "--sout='#std{{access=http,mux=ts,dst=:{port}}}'"
+      "{cmd} "
+      "-I dummy - "
+      "--sout=#std{{access=http,mux=ts,dst=:{port}}}"
     ).format(
+      cmd=self.COMMANDS['cvlc'],
       port=self.port
     )
     # build command list
@@ -97,33 +117,102 @@ class DeskStreamer(object):
     self.cmd_vlc = shlex.split(cmd_vlc, posix=False)
 
   def start(self):
+    """
+    Start streaming.
+
+    Start `avconv` and pipe it to `cvlv`.
+
+    """
+    if self.running_processes:
+      self.stop()
     self.proc_avconv = Popen(self.cmd_avconv, stdout=PIPE)
-    self.proc_vlc = Popen(self.cmd_vlc, stdin=self.proc_avconv.stdout, stdout=PIPE)
+    self.proc_vlc = Popen(
+      self.cmd_vlc, stdin=self.proc_avconv.stdout, stdout=PIPE
+    )
     self.proc_avconv.stdout.close()
 
   def stop(self, seconds=2):
-    processes = ('proc_avconv', 'proc_vlc')
+    """
+    Stop streaming.
+
+    Stop all running processes.
+
+    """
     terminated = False
-    # terminate created processes:
-    processes = filter(None, [getattr(self, proc) for proc in processes])
-    while processes:
-      # stop those still running:
+    while self.running_processes:
       if terminated:
-        map(lambda proc: proc.kill(), processes)
+        map(lambda proc: proc.kill(), self.running_processes)
       else:
-        map(lambda proc: proc.terminate(), processes)
+        map(lambda proc: proc.terminate(), self.running_processes)
         terminated = True
       time.sleep(seconds)  # give them some time...
-      # keep those that are still running
-      processes = [proc for proc in processes if proc.poll() is None]
 
   @property
   def cmd_avconv_as_string(self):
+    """
+    Return the `avconv` command as string.
+
+    """
     return " ".join(self.cmd_avconv)
 
   @property
   def cmd_vlc_as_string(self):
+    """
+    Return the `cvlc` command as string.
+
+    """
     return " ".join(self.cmd_vlc)
+
+  @property
+  def processes(self):
+    """
+    Return a list of all processes.
+
+    """
+    return filter(
+      lambda proc: proc is not None,
+      [getattr(self, proc, None) for proc in self.PROCESSES]
+    )
+
+  @property
+  def running_processes(self):
+    """
+    Return a list of all running processes.
+
+    """
+    return [proc for proc in self.processes if proc.poll() is None]
+
+  @property
+  def missing_commands(self):
+    """
+    Return a list of missing commands.
+
+    """
+    return [cmd for cmd in self.COMMANDS if self.COMMANDS[cmd] is None]
+
+  @property
+  def missing_commands_as_string(self):
+    """
+    Return the missing commands as a string.
+
+    """
+    if self.missing_commands:
+      return "The following needed commands are missing: {}.\n".format(
+        ', '.join(self.missing_commands)
+      )
+    else:
+      return "No needed commands are missing."
+
+  @staticmethod
+  def get_command_path(command):
+    """
+    Return the full path to the *command*.
+
+    """
+    try:
+      return check_output(['which', command]).strip()
+    except CalledProcessError:
+      return None
 
   @staticmethod
   def get_screensize(as_string=False):
@@ -144,10 +233,14 @@ def show_cli(streamer):
   Run *streamer* from CLI interface.
 
   """
+  if streamer.missing_commands:
+    print(streamer.missing_commands_as_string)
+    return 1
   # register signal: stop *streamer* on SIGINT
   signal.signal(signal.SIGINT, lambda signal, frame: streamer.stop())
   streamer.start()  # start streaming
-  signal.pause()  # sleep till signal
+  signal.pause()  # wait for signal
+  return 0
 
 
 def show_gui(streamer):
@@ -191,11 +284,11 @@ def main(show_commands=False, gui=False, **cmd_options):
   if show_commands:
     print(streamer.cmd_avconv_as_string)
     print(streamer.cmd_vlc_as_string)
+    return 0
   elif gui:
-    show_gui(streamer)
+    return show_gui(streamer)
   else:
-    show_cli(streamer)
-  return 0
+    return show_cli(streamer)
 
 
 def _get_args(argv=None):
