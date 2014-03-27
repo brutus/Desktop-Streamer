@@ -2,24 +2,11 @@
 # -*- coding: UTF-8 -*-
 
 """
-Capture *audio* and *video* from desktop and stream it to the local network.
+Capture *audio* and *video* from the desktop and stream it to the network.
 
 Usage:
-  stream_desktop.py [-n|--gui] [-a|-A] [options]
-  stream_desktop.py --version
-  stream_desktop.py --help
 
-Options:
- -h, --help  show help message
- --version  show version
- -n, --show-commands  don't do anything, just show the commands
- --gui  show a GUI to start and stop the stream
- -a, --audio-only  only export audio
- -A, --no-audio  don't export audio
- -f <INT>, --framerate=<INT>  the framerate to use for the stream [default: 25]
- -r <WIDTHxHIGHT>, --res-in=<WIDTHxHIGHT>  the size of the capture area [default: 1920x1080]
- -R <WIDTHxHIGHT>, --res-out=<WIDTHxHIGHT>  transcode to this output resolution [default: 1280x720]
- -p <INT>, --port=<INT>  serve the stream on this port on all devices [default: 1312]
+  stream_desktop.py [-n|--gui] [-a|-A] [capture options] [stream options]
 
 """
 
@@ -29,9 +16,8 @@ import shlex
 import signal
 import Tkinter as tk
 
-import docopt
-
 from subprocess import PIPE, Popen
+from argparse import ArgumentParser
 
 
 __VERSION__ = '0.2'
@@ -64,12 +50,12 @@ class DeskStreamer(object):
   """
 
   def __init__(
-    self, use_audio=True, use_video=True,
+    self, audio=True, video=True,
     framerate=25, res_in=None, res_out=None,
     port=1312
   ):
-    self.use_audio = bool(use_audio)
-    self.use_video = bool(use_video)
+    self.audio = bool(audio)
+    self.video = bool(video)
     self.framerate = int(framerate)
     self.res_in = res_in if res_in else DeskStreamer.get_screensize(
       as_string=True
@@ -96,13 +82,13 @@ class DeskStreamer(object):
     cmd_avconv = (
       "avconv {audio} {video} -threads 0 -f mpegts -"
     ).format(
-      audio=(av_audio if self.use_audio else ''),
-      video=(av_video if self.use_video else '')
+      audio=(av_audio if self.audio else ''),
+      video=(av_video if self.video else '')
     )
     cmd_vlc = (
       "cvlc "
       " -I dummy - "
-      "--sout=#std{{access=http,mux=ts,dst=:{port}}}"
+      "--sout='#std{{access=http,mux=ts,dst=:{port}}}'"
     ).format(
       port=self.port
     )
@@ -214,24 +200,62 @@ def main(show_commands=False, gui=False, **cmd_options):
 
 def _get_args(argv=None):
   """
-  Return dict with parsed arguments and options.
+  Return `namespace` with parsed arguments and options.
 
   """
-  args = {}
-  for k, v in docopt.docopt(__doc__, version=__VERSION__, argv=argv).items():
-    # cleanup argument name:
-    arg = (k[2:] if k.startswith('--') else k).replace('-', '_')
-    # store arguments in `args`:
-    if arg == 'audio_only':
-      args['use_video'] = False if v else True
-    elif arg == 'no_audio':
-      args['use_audio'] = False if v else True
-    elif arg == 'help' or arg == 'version':
-      pass
-    else:
-      args[arg] = v
-  return args
+  ap = ArgumentParser(
+    usage='\n' + __doc__.split('\n\n')[-2],
+    description=__doc__.split('\n\n')[0],
+    version=__VERSION__
+  )
+  ap_x_modes = ap.add_mutually_exclusive_group()
+  ap_x_modes.add_argument(
+    '-n', '--noop', action='store_true', dest='show_commands',
+    help="do nothing - only print the commands"
+  )
+  ap_x_modes.add_argument(
+    '--gui', action='store_true',
+    help="show GUI"
+  )
+  # CAPTURE
+  ag_cap = ap.add_argument_group('Capture')
+  ag_x_audio = ag_cap.add_mutually_exclusive_group()
+  ag_x_audio.add_argument(
+    '-a', '--audio-only', action='store_false', dest='video',
+    help="only capture audio"
+  )
+  ag_x_audio.add_argument(
+    '-A', '--no-audio', action='store_false', dest='audio',
+    help="don't capture audio"
+  )
+  ag_cap.add_argument(
+    '-f', '--framerate', type=int, metavar='INT',
+    help="the framerate to use for the stream [25]"
+  )
+  ag_cap.add_argument(
+    '-r', '--res-in', metavar='INTxINT',
+    help="the size of the capture area [full screen]"
+  )
+  ag_cap.add_argument(
+    '-R', '--res-out', metavar='INTxINT',
+    help="transcode to this output resolution [same as res-in]"
+  )
+  # STREAM
+  ag_strm = ap.add_argument_group('Stream')
+  ag_strm.add_argument(
+    '-p', '--port', type=int,
+    help="serve the stream on this port [1312]"
+  )
+  # defaults
+  ap.set_defaults(
+    audio=True,
+    video=True,
+    framerate=25,
+    port=1312
+  )
+  # return args
+  return ap.parse_args()
 
 
 if __name__ == '__main__':
-  sys.exit(main(**_get_args()))
+  sys.exit(main(**vars(_get_args())))
