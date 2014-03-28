@@ -7,7 +7,7 @@ network using [avconv][avconv] and [vlc][vlc].
 ## Usage
 
 ```
-stream_desktop.py [-n|--gui] [-a|-A] [options]
+stream_desktop.py [-n|--gui] [-a|-A] [capture options] [stream options]
 stream_desktop.py --version
 stream_desktop.py --help
 ```
@@ -17,11 +17,11 @@ stream_desktop.py --help
 
 ### Install
 
-You can just run the python script, no need to install.
+You can just run the python script, no need to install any dependencies.
 
-It requires [docopt][docopt] thought. Install it like this:
+It requires [avconv][avconv] and [vlc][vlc] thought. Install them like this:
 
-  `pip install --user docopt`
+  - Debian / Ubuntu: `sudo apt-get install libav-tools vlc`
 
 ### Setup
 
@@ -33,6 +33,22 @@ desktop shell. Open them in an editor and fill in the correct paths:
 * `Icon` = path to the PNG file you want to use for an icon
 
 After that copy them to `~/.local/share/applications/`.
+
+### Settings
+
+You can use a file to store settings in a JSON dictionary. The default
+location is `~/.config/StreamDesktop/settings.json`. The supported keys
+are the *capture* and *stream* long-options (with `_` instead of `-`).
+
+``` json
+{
+  "port": 420,
+  "res_out": "1280x720"
+}
+```
+
+This file gets loaded if you use the ``--load`` option. The provided
+`.desktop` files use it.
 
 
 ## Shell Script

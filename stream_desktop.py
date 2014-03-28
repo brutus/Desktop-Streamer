@@ -10,10 +10,12 @@ Usage:
 
 """
 
+import os
 import sys
 import time
 import shlex
 import signal
+import json
 import Tkinter as tk
 
 from subprocess import PIPE, Popen, check_output, CalledProcessError
@@ -27,7 +29,7 @@ __license__ = 'GNU General Public License v3 or above - '\
               'http://www.opensource.org/licenses/gpl-3.0.html'
 
 
-class DeskStreamer(object):
+class DesktopStreamer(object):
 
   """
   Stream the desktop to the network with the ``avconv`` and ``vlc`` commands.
@@ -53,6 +55,10 @@ class DeskStreamer(object):
 
   """
 
+  CFG_FILE = os.path.join(
+    os.path.expanduser('~'), '.config', 'StreamDesktop', 'settings.json'
+  )
+
   COMMANDS = OrderedDict([
     ('avconv', None),
     ('cvlc', None)
@@ -69,15 +75,45 @@ class DeskStreamer(object):
     ('port', 1312)
   ])
 
-  def __init__(self, **settings):
+  def __init__(self, load=False, save=None, cfg_file=None, **settings):
     """
     Store settings and create initial commandlines.
 
+    If *cfg_file* is set, this string is used as full path to the file
+    that stores the settings. If not, the file is
+    ``~/.config/StreamDesktop/settings.json``.
+
+    If *load* is set, the settings stored in *cfg_file* are loaded after the
+    defaults but before the additional *settings* are set.
+
+    If *save* is...
+
+    - ``None``: settings are never automatically saved
+
+    - ``False``: settings are saved automatically once after the
+      additional settings are set
+
+    - ``True``: settings are automatically saved after each change
+
     """
-    self.setup_command_paths()  # setup commands
-    self.set(**self.SETTINGS)  # set defaults
-    self.set(**settings)  # set additional settings
-    self.setup()  # create commands
+    # store save / load settings
+    self.autosave = True if save else False
+    if cfg_file is None:
+      self.cfg_file = self.CFG_FILE
+    else:
+      self.cfg_file = cfg_file
+    # settings
+    self.setup_command_paths()
+    # set defaults
+    self.set(**self.SETTINGS)
+    if load:
+      self.load_settings()
+    # set additional settings
+    self.set(**DesktopStreamer.filter_defaults(settings))
+    if save is False:
+      self.save_settings()
+    # create commands
+    self.setup()
 
   def __setattr__(self, name, value):
     """
@@ -91,7 +127,7 @@ class DeskStreamer(object):
 
     """
     if name == 'res_in' and value is None:
-      self.__dict__['res_in'] = DeskStreamer.get_screensize(as_string=True)
+      self.__dict__['res_in'] = DesktopStreamer.get_screensize(as_string=True)
     elif name == 'res_out' and value is None:
       self.__dict__['res_out'] = self.res_in
     elif name in ('framerate', 'port'):
@@ -105,7 +141,7 @@ class DeskStreamer(object):
 
     """
     for cmd in self.COMMANDS:
-      self.COMMANDS[cmd] = DeskStreamer.get_command_path(cmd)
+      self.COMMANDS[cmd] = DesktopStreamer.get_command_path(cmd)
 
   def set(self, **settings):
     """
@@ -113,6 +149,9 @@ class DeskStreamer(object):
 
     Call :meth:`setup` afterwards if attributes have changed, to reflect the
     changes in the commandlines.
+
+    If :attr:`autosave` is set, settings are saved with :meth:`save_settings`
+    after a call that changed the settings.
 
     .. note::
 
@@ -130,6 +169,31 @@ class DeskStreamer(object):
           changes = True
     if changes:
       self.setup()  # create commands
+      if self.autosave:
+        self.save_settings()
+
+  def save_settings(self):
+    """
+    Save settings as JSON to :attr:`cfg_file`.
+
+    """
+    if not os.path.exists(self.cfg_file):
+      path = os.path.dirname(self.cfg_file)
+      os.makedirs(path)
+    with open(self.cfg_file, 'w') as fh:
+      json.dump(self.settings, fh)
+
+  def load_settings(self):
+    """
+    Load settings as JSON from :attr:`cfg_file`.
+
+    """
+    if os.path.exists(self.cfg_file):
+      with open(self.cfg_file) as fh:
+        settings = json.load(fh)
+      autosave, self.autosave = self.autosave, False
+      self.set(**settings)
+      self.autosave = autosave
 
   def setup(self):
     """
@@ -195,6 +259,22 @@ class DeskStreamer(object):
         map(lambda proc: proc.terminate(), self.running_processes)
         terminated = True
       time.sleep(seconds)  # give them some time...
+
+  @property
+  def settings(self):
+    """
+    Return a dictionary containing all settings.
+
+    """
+    return {k: v for k, v in self.__dict__.items() if k in self.SETTINGS}
+
+  @property
+  def settings_as_json(self):
+    """
+    Return a dictionary containing all settings as JSON string.
+
+    """
+    return json.dumps(self.settings)
 
   @property
   def cmd_avconv_as_string(self):
@@ -264,6 +344,18 @@ class DeskStreamer(object):
       return None
 
   @staticmethod
+  def filter_defaults(args):
+    """
+    Return a new dictionary based on *args* conatinig only those key
+    that are not present in :attr:`SETTINGS` or got different values.
+
+    """
+    return {
+      k: v for k, v in args.items() if
+        k not in DesktopStreamer.SETTINGS or v != DesktopStreamer.SETTINGS[k]
+    }
+
+  @staticmethod
   def get_screensize(as_string=False):
     """
     Return screen size as *width*, *height* tuple.
@@ -326,10 +418,10 @@ def main(show_commands=False, gui=False, **cmd_options):
   If *show_commands* is set, only print the commands, don't run them.
   If *gui* is set, show a window too start and stop the stream.
 
-  :param cmd_options: arguments for :class:`DeskStreamer`.
+  :param cmd_options: arguments for :class:`DesktopStreamer`.
 
   """
-  streamer = DeskStreamer(**cmd_options)
+  streamer = DesktopStreamer(**cmd_options)
   if show_commands:
     print(streamer.cmd_avconv_as_string)
     print(streamer.cmd_vlc_as_string)
@@ -358,6 +450,20 @@ def _get_args(argv=None):
   ap_x_modes.add_argument(
     '--gui', action='store_true',
     help="show GUI"
+  )
+  # SETTINGS
+  ag_set = ap.add_argument_group('Settings')
+  ag_set.add_argument(
+    '-s', '--save', action='store_false',
+    help="save settings"
+  )
+  ag_set.add_argument(
+    '-l', '--load', action='store_true',
+    help="load settings"
+  )
+  ag_set.add_argument(
+    '-F', '--cfg-file',
+    help="full path to config file"
   )
   # CAPTURE
   ag_cap = ap.add_argument_group('Capture')
@@ -390,6 +496,7 @@ def _get_args(argv=None):
   )
   # defaults
   ap.set_defaults(
+    save=None,
     audio=True,
     video=True,
     framerate=25,
