@@ -23,7 +23,7 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 
 
-__VERSION__ = '0.3'
+__VERSION__ = '0.4'
 __author__ = 'Brutus [DMC] <brutus.dmc@googlemail.com>'
 __license__ = 'GNU General Public License v3 or above - '\
               'http://www.opensource.org/licenses/gpl-3.0.html'
@@ -102,7 +102,7 @@ class DesktopStreamer(object):
       self.cfg_file = self.CFG_FILE
     else:
       self.cfg_file = cfg_file
-    # settings
+    # find commands
     self.setup_command_paths()
     # set defaults
     self.set(**self.SETTINGS)
@@ -117,7 +117,7 @@ class DesktopStreamer(object):
 
   def __setattr__(self, name, value):
     """
-    Set attribute *name* to *value* and hanlde some **special cases**.
+    Set attribute *name* to *value* and handle some **special cases**.
 
     - If ``res_in`` is ``None``, get the size of the whole screen.
 
@@ -147,13 +147,13 @@ class DesktopStreamer(object):
     """
     Store *settings* as attributes.
 
-    Call :meth:`setup` afterwards if attributes have changed, to reflect the
+    Call :meth:`setup` afterwards *if attributes have changed*, to reflect the
     changes in the commandlines.
 
     If :attr:`autosave` is set, settings are saved with :meth:`save_settings`
-    after a call that changed the settings.
+    after a call that *changed the settings*.
 
-    .. note::
+    .. important::
 
       Only the *keys* from :attr:`SETTINGS` are used and the order is kept.
 
@@ -165,8 +165,8 @@ class DesktopStreamer(object):
           setattr(self, key, settings[key])
           changes = True
       except AttributeError:
-          setattr(self, key, settings[key])
-          changes = True
+        setattr(self, key, settings[key])
+        changes = True
     if changes:
       self.setup()  # create commands
       if self.autosave:
@@ -360,13 +360,67 @@ class DesktopStreamer(object):
     """
     Return screen size as *width*, *height* tuple.
 
-    Or as a `<width>x<height>` string if *as_string* is set.
+    Or as a ``<width>x<height>`` string if *as_string* is set.
 
     """
     root = tk.Tk()  # get root window
     root.withdraw()  # but don't show it
     width, height = root.winfo_screenwidth(), root.winfo_screenheight()
     return "{}x{}".format(width, height) if as_string else (width, height)
+
+
+class DSGui(tk.Frame):
+
+  """
+  Draw a TK GUI for :class:`DesktopStreamer`.
+
+  Contains a button, that starts and stops the stream.
+
+  """
+
+  def __init__(self, master, streamer):
+    tk.Frame.__init__(self, master)
+    self.streamer = streamer
+    self.setup_gui()
+
+  def setup_gui(self):
+    """
+    Create main windwo and widgets.
+
+    """
+    # setup master
+    self.master.title("Desktop Streamer")
+    self.master.protocol("WM_DELETE_WINDOW", self.quit)
+    self.grid()
+    # button
+    self.button = tk.Button(
+      self, padx=20, pady=10, text='Start Stream',
+      command=self.toggle_stream
+    )
+    self.button.grid_configure(padx=60, pady=20)
+    self.button.grid()
+
+  def toggle_stream(self):
+    """
+    Called on *button* press.
+
+    If the stream is running stop it, else start it.
+
+    """
+    if self.button['text'] == 'Start Stream':
+      self.streamer.start()
+      self.button['text'] = 'Stop Stream'
+    else:
+      self.streamer.stop()
+      self.button['text'] = 'Start Stream'
+
+  def quit(self):
+    """
+    Destroy all windows and close *streamer*.
+
+    """
+    self.master.quit()
+    self.streamer.stop()  # close streamer if it runs
 
 
 def show_cli(streamer):
@@ -377,7 +431,7 @@ def show_cli(streamer):
   if streamer.missing_commands:
     print(streamer.missing_commands_as_string)
     return 1
-  # register signal: stop *streamer* on SIGINT
+  # register signal -> stop *streamer* on SIGINT (CTRL+C):
   signal.signal(signal.SIGINT, lambda signal, frame: streamer.stop())
   streamer.start()  # start streaming
   signal.pause()  # wait for signal
@@ -389,26 +443,10 @@ def show_gui(streamer):
   Run *streamer* from GUI interface.
 
   """
-  def _toggle_stream(button, streamer):
-    """
-    Toggle *button* text and *streamer* state.
-
-    """
-    if button['text'] == 'Start Stream':
-      streamer.start()
-      button['text'] = 'Stop Stream'
-    else:
-      streamer.stop()
-      button['text'] = 'Start Stream'
   root = tk.Tk()
-  root.title("Desktop Streamer")
-  button = tk.Button(
-    root, padx=20, pady=10, text='Start Stream',
-    command=lambda: _toggle_stream(button, streamer)
-  )
-  button.grid_configure(padx=60, pady=20)
-  button.grid()
-  root.mainloop()
+  DSGui(root, streamer)
+  root.mainloop()  # show GUI and wait for it to end
+  return 0
 
 
 def main(show_commands=False, gui=False, **cmd_options):
