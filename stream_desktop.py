@@ -369,6 +369,60 @@ class DesktopStreamer(object):
     return "{}x{}".format(width, height) if as_string else (width, height)
 
 
+class DSGui(tk.Frame):
+
+  """
+  Draw a TK GUI for :class:`DesktopStreamer`.
+
+  Contains a button, that starts and stops the stream.
+
+  """
+
+  def __init__(self, master, streamer):
+    tk.Frame.__init__(self, master)
+    self.streamer = streamer
+    self.setup_gui()
+
+  def setup_gui(self):
+    """
+    Create main windwo and widgets.
+
+    """
+    # setup master
+    self.master.title("Desktop Streamer")
+    self.master.protocol("WM_DELETE_WINDOW", self.quit)
+    self.grid()
+    # button
+    self.button = tk.Button(
+      self, padx=20, pady=10, text='Start Stream',
+      command=self.toggle_stream
+    )
+    self.button.grid_configure(padx=60, pady=20)
+    self.button.grid()
+
+  def toggle_stream(self):
+    """
+    Called on *button* press.
+
+    If the stream is running stop it, else start it.
+
+    """
+    if self.button['text'] == 'Start Stream':
+      self.streamer.start()
+      self.button['text'] = 'Stop Stream'
+    else:
+      self.streamer.stop()
+      self.button['text'] = 'Start Stream'
+
+  def quit(self):
+    """
+    Destroy all windows and close *streamer*.
+
+    """
+    self.master.quit()
+    self.streamer.stop()  # close streamer if it runs
+
+
 def show_cli(streamer):
   """
   Run *streamer* from CLI interface.
@@ -389,26 +443,10 @@ def show_gui(streamer):
   Run *streamer* from GUI interface.
 
   """
-  def _toggle_stream(button, streamer):
-    """
-    Toggle *button* text and *streamer* state.
-
-    """
-    if button['text'] == 'Start Stream':
-      streamer.start()
-      button['text'] = 'Stop Stream'
-    else:
-      streamer.stop()
-      button['text'] = 'Start Stream'
   root = tk.Tk()
-  root.title("Desktop Streamer")
-  button = tk.Button(
-    root, padx=20, pady=10, text='Start Stream',
-    command=lambda: _toggle_stream(button, streamer)
-  )
-  button.grid_configure(padx=60, pady=20)
-  button.grid()
-  root.mainloop()
+  DSGui(root, streamer)
+  root.mainloop()  # show GUI and wait for it to end
+  return 0
 
 
 def main(show_commands=False, gui=False, **cmd_options):
