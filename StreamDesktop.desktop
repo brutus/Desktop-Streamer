@@ -2,9 +2,9 @@
 Name=Stream Desktop
 GenericName=Stream Desktop
 Comment=Streams the desktop (audio & video) to the network.
-Exec=/path/to/stream_desktop.py --gui
+Exec=/path/to/stream_desktop.py --load --gui
 Terminal=false
 Type=Application
 StartupNotify=true
-Icon=/path/to/icon.png
+Icon=/path/to/icon.svg
 Category=
