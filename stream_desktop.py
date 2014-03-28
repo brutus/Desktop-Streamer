@@ -102,7 +102,7 @@ class DesktopStreamer(object):
       self.cfg_file = self.CFG_FILE
     else:
       self.cfg_file = cfg_file
-    # settings
+    # find commands
     self.setup_command_paths()
     # set defaults
     self.set(**self.SETTINGS)
@@ -117,7 +117,7 @@ class DesktopStreamer(object):
 
   def __setattr__(self, name, value):
     """
-    Set attribute *name* to *value* and hanlde some **special cases**.
+    Set attribute *name* to *value* and handle some **special cases**.
 
     - If ``res_in`` is ``None``, get the size of the whole screen.
 
@@ -147,13 +147,13 @@ class DesktopStreamer(object):
     """
     Store *settings* as attributes.
 
-    Call :meth:`setup` afterwards if attributes have changed, to reflect the
+    Call :meth:`setup` afterwards *if attributes have changed*, to reflect the
     changes in the commandlines.
 
     If :attr:`autosave` is set, settings are saved with :meth:`save_settings`
-    after a call that changed the settings.
+    after a call that *changed the settings*.
 
-    .. note::
+    .. important::
 
       Only the *keys* from :attr:`SETTINGS` are used and the order is kept.
 
@@ -165,8 +165,8 @@ class DesktopStreamer(object):
           setattr(self, key, settings[key])
           changes = True
       except AttributeError:
-          setattr(self, key, settings[key])
-          changes = True
+        setattr(self, key, settings[key])
+        changes = True
     if changes:
       self.setup()  # create commands
       if self.autosave:
@@ -360,7 +360,7 @@ class DesktopStreamer(object):
     """
     Return screen size as *width*, *height* tuple.
 
-    Or as a `<width>x<height>` string if *as_string* is set.
+    Or as a ``<width>x<height>`` string if *as_string* is set.
 
     """
     root = tk.Tk()  # get root window
@@ -377,7 +377,7 @@ def show_cli(streamer):
   if streamer.missing_commands:
     print(streamer.missing_commands_as_string)
     return 1
-  # register signal: stop *streamer* on SIGINT
+  # register signal -> stop *streamer* on SIGINT (CTRL+C):
   signal.signal(signal.SIGINT, lambda signal, frame: streamer.stop())
   streamer.start()  # start streaming
   signal.pause()  # wait for signal
