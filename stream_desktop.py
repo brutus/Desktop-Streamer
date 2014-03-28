@@ -23,7 +23,7 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 
 
-__VERSION__ = '0.2'
+__VERSION__ = '0.3'
 __author__ = 'Brutus [DMC] <brutus.dmc@googlemail.com>'
 __license__ = 'GNU General Public License v3 or above - '\
               'http://www.opensource.org/licenses/gpl-3.0.html'
