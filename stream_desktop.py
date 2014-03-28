@@ -18,6 +18,7 @@ import Tkinter as tk
 
 from subprocess import PIPE, Popen, check_output, CalledProcessError
 from argparse import ArgumentParser
+from collections import OrderedDict
 
 
 __VERSION__ = '0.2'
@@ -42,37 +43,61 @@ class DeskStreamer(object):
 
   .. note::
 
-    The attributes used to build the commandlines are set on instanciation.
+    The attributes used to build the commandlines are set on instantiation.
 
     You can change them later too, but must call :meth:`setup` afterwards, or
     the commands wont reflect your change.
 
+    Using :meth:`set` instead is recommended. If you do, the commandlines are
+    automatically recreated on changes.
+
   """
 
-  COMMANDS = {
-    'avconv': None,
-    'cvlc': None
-  }
+  COMMANDS = OrderedDict([
+    ('avconv', None),
+    ('cvlc', None)
+  ])
 
   PROCESSES = ('proc_avconv', 'proc_vlc')
 
-  def __init__(
-    self, audio=True, video=True,
-    framerate=25, res_in=None, res_out=None,
-    port=1312
-  ):
-    # setup commands
-    self.setup_command_paths()
-    # settings
-    self.audio = bool(audio)
-    self.video = bool(video)
-    self.framerate = int(framerate)
-    self.res_in = res_in if res_in else DeskStreamer.get_screensize(
-      as_string=True
-    )
-    self.res_out = res_out if res_out else self.res_in
-    self.port = int(port)
-    self.setup()
+  SETTINGS = OrderedDict([
+    ('audio', True),
+    ('video', True),
+    ('res_in', None),
+    ('res_out', None),
+    ('framerate', 25),
+    ('port', 1312)
+  ])
+
+  def __init__(self, **settings):
+    """
+    Store settings and create initial commandlines.
+
+    """
+    self.setup_command_paths()  # setup commands
+    self.set(**self.SETTINGS)  # set defaults
+    self.set(**settings)  # set additional settings
+    self.setup()  # create commands
+
+  def __setattr__(self, name, value):
+    """
+    Set attribute *name* to *value* and hanlde some **special cases**.
+
+    - If ``res_in`` is ``None``, get the size of the whole screen.
+
+    - If ``res_out`` is ``None``, use same as ``res_in``.
+
+    - Cast ``framerate`` and ``port`` to ``int``.
+
+    """
+    if name == 'res_in' and value is None:
+      self.__dict__['res_in'] = DeskStreamer.get_screensize(as_string=True)
+    elif name == 'res_out' and value is None:
+      self.__dict__['res_out'] = self.res_in
+    elif name in ('framerate', 'port'):
+      self.__dict__[name] = int(value)
+    else:
+      self.__dict__[name] = value
 
   def setup_command_paths(self):
     """
@@ -81,6 +106,30 @@ class DeskStreamer(object):
     """
     for cmd in self.COMMANDS:
       self.COMMANDS[cmd] = DeskStreamer.get_command_path(cmd)
+
+  def set(self, **settings):
+    """
+    Store *settings* as attributes.
+
+    Call :meth:`setup` afterwards if attributes have changed, to reflect the
+    changes in the commandlines.
+
+    .. note::
+
+      Only the *keys* from :attr:`SETTINGS` are used and the order is kept.
+
+    """
+    changes = False
+    for key in [key for key in self.SETTINGS if key in settings]:
+      try:
+        if settings[key] != getattr(self, key):
+          setattr(self, key, settings[key])
+          changes = True
+      except AttributeError:
+          setattr(self, key, settings[key])
+          changes = True
+    if changes:
+      self.setup()  # create commands
 
   def setup(self):
     """
@@ -217,7 +266,7 @@ class DeskStreamer(object):
   @staticmethod
   def get_screensize(as_string=False):
     """
-    Return screensize as *width*, *height* tuple.
+    Return screen size as *width*, *height* tuple.
 
     Or as a `<width>x<height>` string if *as_string* is set.
 
