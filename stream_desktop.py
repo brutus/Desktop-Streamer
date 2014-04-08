@@ -18,6 +18,7 @@ import time
 import shlex
 import signal
 import json
+import tkMessageBox
 import Tkinter as tk
 
 from subprocess import PIPE, Popen, check_output, CalledProcessError
@@ -29,6 +30,10 @@ __VERSION__ = '0.4'
 __author__ = 'Brutus [DMC] <brutus.dmc@googlemail.com>'
 __license__ = 'GNU General Public License v3 or above - '\
               'http://www.opensource.org/licenses/gpl-3.0.html'
+
+
+class DesktopStreamerError(Exception):
+  pass
 
 
 class DesktopStreamer(object):
@@ -190,6 +195,11 @@ class DesktopStreamer(object):
     """
     Build attr:`cmd_avconv` and attr:`cmd_vlc` commandlines from settings.
 
+    .. note::
+
+      If no command-path is set in :attr:`self.COMMANDS` for a command,
+      the command name is used instead.
+
     """
     # command template: avconv
     cmd_avconv = self.COMMANDS['avconv']
@@ -230,8 +240,15 @@ class DesktopStreamer(object):
     Start ``avconv`` and pipe it to ``vlc``.
 
     """
+    # check for missing commands
+    if self.missing_commands:
+      msg = "The following needed commands are missing: {}."
+      msg = msg.format(', '.join(self.missing_commands))
+      raise DesktopStreamerError("ERROR: " + msg)
+    # check if already running
     if self.running_processes:
       self.stop()
+    # start...
     self.proc_avconv = Popen(self.cmd_avconv, stdout=PIPE)
     self.proc_vlc = Popen(
       self.cmd_vlc, stdin=self.proc_avconv.stdout, stdout=PIPE
@@ -303,19 +320,6 @@ class DesktopStreamer(object):
     """
     return [cmd for cmd in self.COMMANDS if self.COMMANDS[cmd] is None]
 
-  @property
-  def missing_commands_as_string(self):
-    """
-    Return the missing commands as a string.
-
-    """
-    if self.missing_commands:
-      return "The following needed commands are missing: {}.\n".format(
-        ', '.join(self.missing_commands)
-      )
-    else:
-      return "No needed commands are missing."
-
   @staticmethod
   def get_command_path(command):
     """
@@ -353,11 +357,12 @@ class DSGui(tk.Frame):
   def __init__(self, master, streamer):
     tk.Frame.__init__(self, master)
     self.streamer = streamer
+    self.return_code = 0
     self.setup_gui()
 
   def setup_gui(self):
     """
-    Create main windwo and widgets.
+    Create main window and widgets.
 
     """
     # setup master
@@ -380,8 +385,13 @@ class DSGui(tk.Frame):
 
     """
     if self.button['text'] == 'Start Stream':
-      self.streamer.start()
-      self.button['text'] = 'Stop Stream'
+      try:
+        self.streamer.start()
+        self.button['text'] = 'Stop Stream'
+      except DesktopStreamerError as err:
+        self.return_code = 1
+        tkMessageBox.showerror("ERROR", err)
+        self.quit()
     else:
       self.streamer.stop()
       self.button['text'] = 'Start Stream'
@@ -391,8 +401,8 @@ class DSGui(tk.Frame):
     Destroy all windows and close *streamer*.
 
     """
-    self.master.quit()
     self.streamer.stop()  # close streamer if it runs
+    self.master.quit()
 
 
 def show_cli(streamer):
@@ -400,13 +410,14 @@ def show_cli(streamer):
   Run *streamer* from CLI interface.
 
   """
-  if streamer.missing_commands:
-    print(streamer.missing_commands_as_string)
-    return 1
   # register signal -> stop *streamer* on SIGINT (CTRL+C):
   signal.signal(signal.SIGINT, lambda signal, frame: streamer.stop())
-  streamer.start()  # start streaming
-  signal.pause()  # wait for signal
+  try:
+    streamer.start()  # start streaming
+    signal.pause()  # wait for signal
+  except DesktopStreamerError as err:
+    print(err, file=sys.stderr)
+    return 1
   return 0
 
 
@@ -416,9 +427,9 @@ def show_gui(streamer):
 
   """
   root = tk.Tk()
-  DSGui(root, streamer)
+  gui = DSGui(root, streamer)
   root.mainloop()  # show GUI and wait for it to end
-  return 0
+  return gui.return_code
 
 
 def main(show_commands=False, gui=False, **cmd_options):
@@ -436,7 +447,7 @@ def main(show_commands=False, gui=False, **cmd_options):
     print(streamer.cmd_avconv_as_string)
     print(streamer.cmd_vlc_as_string)
     return 0
-  elif gui:
+  if gui:
     return show_gui(streamer)
   else:
     return show_cli(streamer)
