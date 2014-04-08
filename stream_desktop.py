@@ -19,7 +19,7 @@ import json
 import Tkinter as tk
 
 from subprocess import PIPE, Popen, check_output, CalledProcessError
-from argparse import ArgumentParser
+from argparse import ArgumentParser, SUPPRESS
 from collections import OrderedDict
 
 
@@ -50,8 +50,8 @@ class DesktopStreamer(object):
     You can change them later too, but must call :meth:`setup` afterwards, or
     the commands wont reflect your change.
 
-    Using :meth:`set` instead is recommended. If you do, the commandlines are
-    automatically recreated on changes.
+    Using :meth:`set_settings` instead is recommended. If you do, the
+    commandlines are automatically recreated on changes.
 
   """
 
@@ -75,55 +75,47 @@ class DesktopStreamer(object):
     ('port', 1312)
   ])
 
-  def __init__(self, load=False, save=None, cfg_file=None, **settings):
+  def __init__(self, load=False, save=False, cfg_file=None, **settings):
     """
-    Store settings and create initial commandlines.
+    Handles *settings* and creates initial commandlines.
 
     If *cfg_file* is set, this string is used as full path to the file
-    that stores the settings. If not, the file is
-    ``~/.config/StreamDesktop/settings.json``.
+    that stores the settings. If not, the path from :attr:`CFG_FILE` is used.
 
-    If *load* is set, the settings stored in *cfg_file* are loaded after the
-    defaults but before the additional *settings* are set.
+    If *load* is set, the settings stored in :attr:`cfg_file` are loaded. This
+    happens **after** the defaults are loaded, but **before** the additional
+    *settings* are used.
 
-    If *save* is...
-
-    - ``None``: settings are never automatically saved
-
-    - ``False``: settings are saved automatically once after the
-      additional settings are set
-
-    - ``True``: settings are automatically saved after each change
+    If *save* is set, the settings are saved to :attr:`cfg_file`. This happens
+    **after** the additional *settings* are used.
 
     """
     # store save / load settings
-    self.autosave = True if save else False
-    if cfg_file is None:
-      self.cfg_file = self.CFG_FILE
-    else:
-      self.cfg_file = cfg_file
+    self.cfg_file = cfg_file if cfg_file else self.CFG_FILE
     # find commands
     self.setup_command_paths()
-    # set defaults
-    self.set(**self.SETTINGS)
+    # 1. load defaults
+    self.set_settings(**self.SETTINGS)
+    # 2. load stored settings - if wanted
     if load:
       self.load_settings()
-    # set additional settings
-    self.set(**DesktopStreamer.filter_defaults(settings))
-    if save is False:
+    # 3. use additional *settings*
+    self.set_settings(**settings)
+    # save final settings - if wanted
+    if save:
       self.save_settings()
     # create commands
     self.setup()
 
   def __setattr__(self, name, value):
     """
-    Set attribute *name* to *value* and handle some **special cases**.
+    Sets attribute *name* to *value* and handles some **special cases**.
 
-    - If ``res_in`` is ``None``, get the size of the whole screen.
+    - If *res_in* is `None`, get the size of the whole screen.
 
-    - If ``res_out`` is ``None``, use same as ``res_in``.
+    - If *res_out* is `None`, use same as *res_in*.
 
-    - Cast ``framerate`` and ``port`` to ``int``.
+    - Cast *framerate* and *port* to `int`.
 
     """
     if name == 'res_in' and value is None:
@@ -137,21 +129,18 @@ class DesktopStreamer(object):
 
   def setup_command_paths(self):
     """
-    Get full paths to the used commands.
+    Gets full paths to the used commands.
 
     """
     for cmd in self.COMMANDS:
       self.COMMANDS[cmd] = DesktopStreamer.get_command_path(cmd)
 
-  def set(self, **settings):
+  def set_settings(self, **settings):
     """
-    Store *settings* as attributes.
+    Stores *settings* as attributes.
 
     Call :meth:`setup` afterwards *if attributes have changed*, to reflect the
     changes in the commandlines.
-
-    If :attr:`autosave` is set, settings are saved with :meth:`save_settings`
-    after a call that *changed the settings*.
 
     .. important::
 
@@ -159,6 +148,7 @@ class DesktopStreamer(object):
 
     """
     changes = False
+    # process settings...
     for key in [key for key in self.SETTINGS if key in settings]:
       try:
         if settings[key] != getattr(self, key):
@@ -167,10 +157,9 @@ class DesktopStreamer(object):
       except AttributeError:
         setattr(self, key, settings[key])
         changes = True
+    # create (new) commandlines on changes
     if changes:
-      self.setup()  # create commands
-      if self.autosave:
-        self.save_settings()
+      self.setup()
 
   def save_settings(self):
     """
@@ -178,8 +167,7 @@ class DesktopStreamer(object):
 
     """
     if not os.path.exists(self.cfg_file):
-      path = os.path.dirname(self.cfg_file)
-      os.makedirs(path)
+      os.makedirs(os.path.dirname(self.cfg_file))
     with open(self.cfg_file, 'w') as fh:
       json.dump(self.settings, fh)
 
@@ -191,16 +179,15 @@ class DesktopStreamer(object):
     if os.path.exists(self.cfg_file):
       with open(self.cfg_file) as fh:
         settings = json.load(fh)
-      autosave, self.autosave = self.autosave, False
-      self.set(**settings)
-      self.autosave = autosave
+      self.set_settings(**settings)
 
   def setup(self):
     """
-    Build *cmd_avconv* and *cmd_vlc* commandlines from settings.
+    Build attr:`cmd_avconv` and attr:`cmd_vlc` commandlines from settings.
 
     """
-    # command templates
+    # command template: avconv
+    cmd_avconv = self.COMMANDS['avconv']
     av_audio = (
       "-f alsa -ac 2 -i pulse -acodec libmp3lame"
     )
@@ -213,16 +200,18 @@ class DesktopStreamer(object):
     cmd_avconv = (
       "{cmd} {audio} {video} -threads 0 -f mpegts -"
     ).format(
-      cmd=self.COMMANDS['avconv'],
+      cmd=(cmd_avconv if cmd_avconv else 'avconv'),
       audio=(av_audio if self.audio else ''),
       video=(av_video if self.video else '')
     )
+    # command template: vlc
+    cmd_vlc = self.COMMANDS['cvlc']
     cmd_vlc = (
       "{cmd} "
       "-I dummy - "
       "--sout=#std{{access=http,mux=ts,dst=:{port}}}"
     ).format(
-      cmd=self.COMMANDS['cvlc'],
+      cmd=(cmd_vlc if cmd_vlc else 'cvlc'),
       port=self.port
     )
     # build command list
@@ -233,7 +222,7 @@ class DesktopStreamer(object):
     """
     Start streaming.
 
-    Start `avconv` and pipe it to `cvlv`.
+    Start ``avconv`` and pipe it to ``vlc``.
 
     """
     if self.running_processes:
@@ -269,14 +258,6 @@ class DesktopStreamer(object):
     return {k: v for k, v in self.__dict__.items() if k in self.SETTINGS}
 
   @property
-  def settings_as_json(self):
-    """
-    Return a dictionary containing all settings as JSON string.
-
-    """
-    return json.dumps(self.settings)
-
-  @property
   def cmd_avconv_as_string(self):
     """
     Return the `avconv` command as string.
@@ -295,13 +276,11 @@ class DesktopStreamer(object):
   @property
   def processes(self):
     """
-    Return a list of all processes.
+    Return alist of all processes.
 
     """
-    return filter(
-      lambda proc: proc is not None,
-      [getattr(self, proc, None) for proc in self.PROCESSES]
-    )
+    processes = (getattr(self, proc, None) for proc in self.PROCESSES)
+    return [proc for proc in processes if proc is not None]
 
   @property
   def running_processes(self):
@@ -335,25 +314,13 @@ class DesktopStreamer(object):
   @staticmethod
   def get_command_path(command):
     """
-    Return the full path to the *command*.
+    Return the full path to *command* or `None` if not found.
 
     """
     try:
       return check_output(['which', command]).strip()
     except CalledProcessError:
       return None
-
-  @staticmethod
-  def filter_defaults(args):
-    """
-    Return a new dictionary based on *args* conatinig only those key
-    that are not present in :attr:`SETTINGS` or got different values.
-
-    """
-    return {
-      k: v for k, v in args.items() if
-        k not in DesktopStreamer.SETTINGS or v != DesktopStreamer.SETTINGS[k]
-    }
 
   @staticmethod
   def get_screensize(as_string=False):
@@ -478,7 +445,8 @@ def _get_args(argv=None):
   ap = ArgumentParser(
     usage='\n' + __doc__.split('\n\n')[-2],
     description=__doc__.split('\n\n')[0],
-    version=__VERSION__
+    version=__VERSION__,
+    argument_default=SUPPRESS
   )
   ap_x_modes = ap.add_mutually_exclusive_group()
   ap_x_modes.add_argument(
@@ -490,55 +458,58 @@ def _get_args(argv=None):
     help="show GUI"
   )
   # SETTINGS
-  ag_set = ap.add_argument_group('Settings')
+  ag_set = ap.add_argument_group(
+    "Settings",
+    "Options to load and save settings. "
+      "Which file is used to store them can be set with `--cgf-file`. "
+      "The default is: `{}`.".format(DesktopStreamer.CFG_FILE)
+  )
   ag_set.add_argument(
-    '-s', '--save', action='store_false',
+    '--save', action='store_true',
     help="save settings"
   )
   ag_set.add_argument(
-    '-l', '--load', action='store_true',
+    '--load', action='store_true',
     help="load settings"
   )
   ag_set.add_argument(
-    '-F', '--cfg-file',
-    help="full path to config file"
+    '--cfg-file', metavar='FILENAME',
+    help="full path to the config file"
   )
   # CAPTURE
-  ag_cap = ap.add_argument_group('Capture')
+  ag_cap = ap.add_argument_group(
+    "Capture",
+    "These options govern how the stream is being captured."
+  )
   ag_x_audio = ag_cap.add_mutually_exclusive_group()
   ag_x_audio.add_argument(
     '-a', '--audio-only', action='store_false', dest='video',
-    help="only capture audio"
+    help="only capture audio (no video)"
   )
   ag_x_audio.add_argument(
     '-A', '--no-audio', action='store_false', dest='audio',
-    help="don't capture audio"
+    help="don't capture audio (just video)"
   )
   ag_cap.add_argument(
     '-f', '--framerate', type=int, metavar='INT',
-    help="the framerate to use for the stream [25]"
+    help="framerate for the stream [25]"
   )
   ag_cap.add_argument(
     '-r', '--res-in', metavar='INTxINT',
-    help="the size of the capture area [full screen]"
+    help="size of the capture area [full screen]"
   )
   ag_cap.add_argument(
     '-R', '--res-out', metavar='INTxINT',
     help="transcode to this output resolution [same as res-in]"
   )
   # STREAM
-  ag_strm = ap.add_argument_group('Stream')
+  ag_strm = ap.add_argument_group(
+    "Stream",
+    "These options govern how the stream is sent to the network."
+  )
   ag_strm.add_argument(
     '-p', '--port', type=int,
     help="serve the stream on this port [1312]"
-  )
-  # defaults
-  ap.set_defaults(
-    save=None,
-    audio=True,
-    video=True,
-    framerate=25,
-    port=1312
   )
   # return args
   return ap.parse_args()
