@@ -10,6 +10,8 @@ Usage:
 
 """
 
+from __future__ import print_function
+
 import os
 import sys
 import time
@@ -176,10 +178,13 @@ class DesktopStreamer(object):
     Load settings as JSON from :attr:`cfg_file`.
 
     """
-    if os.path.exists(self.cfg_file):
+    try:
       with open(self.cfg_file) as fh:
         settings = json.load(fh)
       self.set_settings(**settings)
+    except IOError:
+      err_msg = "WARNING: Can't load settings from '{}'."
+      print(err_msg.format(self.cfg_file), file=sys.stderr)
 
   def setup(self):
     """
