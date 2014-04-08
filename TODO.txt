@@ -1,0 +1,17 @@
+Interface
+---------
+
+- add a GTK interfacer that is used instead of TK if installed
+
+Stream
+------
+
+- add options for X and Y offsets
+
+- use a less CPU / GPU intensive stream format
+
+  - as size propbly doesn't matter much in the local network
+
+  - that still works with XBMC
+
+- check if voiceover audio (headset) is captured
