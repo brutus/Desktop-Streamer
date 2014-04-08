@@ -26,7 +26,7 @@ from argparse import ArgumentParser, SUPPRESS
 from collections import OrderedDict
 
 
-__VERSION__ = '0.4'
+__VERSION__ = '0.5'
 __author__ = 'Brutus [DMC] <brutus.dmc@googlemail.com>'
 __license__ = 'GNU General Public License v3 or above - '\
               'http://www.opensource.org/licenses/gpl-3.0.html'
