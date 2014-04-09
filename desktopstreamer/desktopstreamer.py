@@ -2,38 +2,29 @@
 # -*- coding: UTF-8 -*-
 
 """
-Capture *audio* and *video* from the desktop and stream it to the network.
-
-Usage:
-
-  stream_desktop.py [-n|--gui] [-a|-A] [capture options] [stream options]
+A class to capture *audio* and *video* from the desktop and stream it to the
+network.
 
 """
 
+from __future__ import absolute_import
 from __future__ import print_function
 
 import os
 import sys
 import time
 import shlex
-import signal
 import json
-import tkMessageBox
 import Tkinter as tk
 
 from subprocess import PIPE, Popen, check_output, CalledProcessError
-from argparse import ArgumentParser, SUPPRESS
+
 from collections import OrderedDict
 
-
-__VERSION__ = '0.5'
-__author__ = 'Brutus [DMC] <brutus.dmc@googlemail.com>'
-__license__ = 'GNU General Public License v3 or above - '\
-              'http://www.opensource.org/licenses/gpl-3.0.html'
+from . import DesktopStreamerError
 
 
-class DesktopStreamerError(Exception):
-  pass
+__all__ = ['DesktopStreamer']
 
 
 class DesktopStreamer(object):
@@ -343,193 +334,3 @@ class DesktopStreamer(object):
     root.withdraw()  # but don't show it
     width, height = root.winfo_screenwidth(), root.winfo_screenheight()
     return "{}x{}".format(width, height) if as_string else (width, height)
-
-
-class DSGui(tk.Frame):
-
-  """
-  Draw a TK GUI for :class:`DesktopStreamer`.
-
-  Contains a button, that starts and stops the stream.
-
-  """
-
-  def __init__(self, master, streamer):
-    tk.Frame.__init__(self, master)
-    self.streamer = streamer
-    self.return_code = 0
-    self.setup_gui()
-
-  def setup_gui(self):
-    """
-    Create main window and widgets.
-
-    """
-    # setup master
-    self.master.title("Desktop Streamer")
-    self.master.protocol("WM_DELETE_WINDOW", self.quit)
-    self.grid()
-    # button
-    self.button = tk.Button(
-      self, padx=20, pady=10, text='Start Stream',
-      command=self.toggle_stream
-    )
-    self.button.grid_configure(padx=60, pady=20)
-    self.button.grid()
-
-  def toggle_stream(self):
-    """
-    Called on *button* press.
-
-    If the stream is running stop it, else start it.
-
-    """
-    if self.button['text'] == 'Start Stream':
-      try:
-        self.streamer.start()
-        self.button['text'] = 'Stop Stream'
-      except DesktopStreamerError as err:
-        self.return_code = 1
-        tkMessageBox.showerror("ERROR", err)
-        self.quit()
-    else:
-      self.streamer.stop()
-      self.button['text'] = 'Start Stream'
-
-  def quit(self):
-    """
-    Destroy all windows and close *streamer*.
-
-    """
-    self.streamer.stop()  # close streamer if it runs
-    self.master.quit()
-
-
-def show_cli(streamer):
-  """
-  Run *streamer* from CLI interface.
-
-  """
-  # register signal -> stop *streamer* on SIGINT (CTRL+C):
-  signal.signal(signal.SIGINT, lambda signal, frame: streamer.stop())
-  try:
-    streamer.start()  # start streaming
-    signal.pause()  # wait for signal
-  except DesktopStreamerError as err:
-    print(err, file=sys.stderr)
-    return 1
-  return 0
-
-
-def show_gui(streamer):
-  """
-  Run *streamer* from GUI interface.
-
-  """
-  root = tk.Tk()
-  gui = DSGui(root, streamer)
-  root.mainloop()  # show GUI and wait for it to end
-  return gui.return_code
-
-
-def main(show_commands=False, gui=False, **cmd_options):
-  """
-  Format commands according to *cmd_options* and run them.
-
-  If *show_commands* is set, only print the commands, don't run them.
-  If *gui* is set, show a window too start and stop the stream.
-
-  :param cmd_options: arguments for :class:`DesktopStreamer`.
-
-  """
-  streamer = DesktopStreamer(**cmd_options)
-  if show_commands:
-    print(streamer.cmd_avconv_as_string)
-    print(streamer.cmd_vlc_as_string)
-    return 0
-  if gui:
-    return show_gui(streamer)
-  else:
-    return show_cli(streamer)
-
-
-def _get_args(argv=None):
-  """
-  Return `namespace` with parsed arguments and options.
-
-  """
-  ap = ArgumentParser(
-    usage='\n' + __doc__.split('\n\n')[-2],
-    description=__doc__.split('\n\n')[0],
-    version=__VERSION__,
-    argument_default=SUPPRESS
-  )
-  ap_x_modes = ap.add_mutually_exclusive_group()
-  ap_x_modes.add_argument(
-    '-n', '--noop', action='store_true', dest='show_commands',
-    help="do nothing - only print the commands"
-  )
-  ap_x_modes.add_argument(
-    '--gui', action='store_true',
-    help="show GUI"
-  )
-  # SETTINGS
-  ag_set = ap.add_argument_group(
-    "Settings",
-    "Options to load and save settings. "
-      "Which file is used to store them can be set with `--cgf-file`. "
-      "The default is: `{}`.".format(DesktopStreamer.CFG_FILE)
-  )
-  ag_set.add_argument(
-    '--save', action='store_true',
-    help="save settings"
-  )
-  ag_set.add_argument(
-    '--load', action='store_true',
-    help="load settings"
-  )
-  ag_set.add_argument(
-    '--cfg-file', metavar='FILENAME',
-    help="full path to the config file"
-  )
-  # CAPTURE
-  ag_cap = ap.add_argument_group(
-    "Capture",
-    "These options govern how the stream is being captured."
-  )
-  ag_x_audio = ag_cap.add_mutually_exclusive_group()
-  ag_x_audio.add_argument(
-    '-a', '--audio-only', action='store_false', dest='video',
-    help="only capture audio (no video)"
-  )
-  ag_x_audio.add_argument(
-    '-A', '--no-audio', action='store_false', dest='audio',
-    help="don't capture audio (just video)"
-  )
-  ag_cap.add_argument(
-    '-f', '--framerate', type=int, metavar='INT',
-    help="framerate for the stream [25]"
-  )
-  ag_cap.add_argument(
-    '-r', '--res-in', metavar='INTxINT',
-    help="size of the capture area [full screen]"
-  )
-  ag_cap.add_argument(
-    '-R', '--res-out', metavar='INTxINT',
-    help="transcode to this output resolution [same as res-in]"
-  )
-  # STREAM
-  ag_strm = ap.add_argument_group(
-    "Stream",
-    "These options govern how the stream is sent to the network."
-  )
-  ag_strm.add_argument(
-    '-p', '--port', type=int,
-    help="serve the stream on this port [1312]"
-  )
-  # return args
-  return ap.parse_args()
-
-
-if __name__ == '__main__':
-  sys.exit(main(**vars(_get_args())))
