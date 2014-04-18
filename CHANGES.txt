@@ -1,5 +1,0 @@
-0.1 initial version
-0.2 GUI, icon and desktop files
-0.3 save and load settings
-0.4 rewrote TK GUI
-0.5 some refactoring and cleanups

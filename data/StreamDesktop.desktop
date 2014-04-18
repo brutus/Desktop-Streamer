@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Desktop Streamer
+Comment=Streams the desktop (audio & video) to the network.
+Exec=stream_desktop --load --gui
+Icon=desktopstreamer
+Terminal=false
+Type=Application
