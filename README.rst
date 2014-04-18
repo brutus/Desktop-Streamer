@@ -46,13 +46,13 @@ Requirements
 
 `avconv`_ and `vlc`_ are required though. Install them like this:
 
-  - Debian / Ubuntu: ``sudo apt-get install libav-tools vlc``
+- Debian / Ubuntu: ``sudo apt-get install libav-tools vlc``
 
 Setup
 -----
 
-You can use the provided `.desktop` files to include the script in your
-desktop shell. Open them in an editor and fill in the correct paths for:
+You can use the provided `.desktop` files to start the script from your
+desktop shell.
 
 Settings
 ~~~~~~~~
@@ -88,4 +88,5 @@ python script has more options though.
 
 .. _avconv: http://libav.org/avconv.html
 .. _vlc: http://www.videolan.org/vlc/
+.. _pip: http://www.pip-installer.org/en/latest/
 .. _source: https://github.com/brutus/Desktop-Streamer/archive/master.zip

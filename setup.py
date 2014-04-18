@@ -18,7 +18,7 @@ setup(
   license='GPLv3',
   packages=['desktopstreamer'],
   data_files=[
-    ('share/icons/hicolor/scalable/apps', ['data/desktopstreamer.svg']),
+    # ('share/icons/hicolor/scalable/apps', ['data/desktopstreamer.svg']),
     ('share/icons/hicolor/64x64/apps', ['data/desktopstreamer.png']),
     ('share/applications', ['data/StreamDesktop.desktop'])
   ],
