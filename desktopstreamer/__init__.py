@@ -8,7 +8,7 @@ You can run this package like this:
   python -m desktopstreamer [-n|--gui] [-a|-A] [capture options] [stream options]
 
 Or use the provided start script called ``stream_desktop`` if you installed
-this package. If you installed this package, you should also run this from
+this package. If you installed this package, you could also run this from
 your desktop shell under the name *Desktop Streamer*.
 
 """
@@ -29,6 +29,7 @@ __license__ = 'GNU General Public License v3 or above - '\
 
 class DesktopStreamerError(Exception):
   pass
+
 
 from .desktopstreamer import DesktopStreamer
 from .cli import parse_arguments, show_cli

@@ -25,7 +25,7 @@ def run(show_commands=False, gui=False, **cmd_options):
   Create the needed commands according to *cmd_options* and run them.
 
   If *show_commands* is set, only print the commands, don't run them.
-  If *gui* is set, show a window too start and stop the stream.
+  If *gui* is set, show a window to start and stop the stream.
 
   :param cmd_options: arguments for :class:`desktopstreamer.DesktopStreamer`.
 

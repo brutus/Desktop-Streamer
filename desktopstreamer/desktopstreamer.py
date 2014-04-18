@@ -5,6 +5,8 @@
 A class to capture *audio* and *video* from the desktop and stream it to the
 network.
 
+The external ``avconv`` and ``vlc`` commands are used for this.
+
 """
 
 from __future__ import absolute_import
@@ -18,7 +20,6 @@ import json
 import Tkinter as tk
 
 from subprocess import PIPE, Popen, check_output, CalledProcessError
-
 from collections import OrderedDict
 
 from . import DesktopStreamerError
