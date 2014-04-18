@@ -24,7 +24,7 @@ setup(
   ],
   entry_points={
     'console_scripts': [
-      'stream_desktop=desktopstreamer:run',
+      'stream_desktop=desktopstreamer:main',
     ],
   },
 )
