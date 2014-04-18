@@ -1,0 +1,4 @@
+include README.rst
+include LICENSE CHANGES TODO
+include data/*
+exclude MANIFEST.in
