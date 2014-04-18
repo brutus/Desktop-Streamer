@@ -1,68 +1,91 @@
-# Stream Desktop
+==============
+Stream Desktop
+==============
 
 Capture *audio* and *video* from the desktop and stream it to the local
-network using [avconv][avconv] and [vlc][vlc].
+network using `avconv`_ and `vlc`_.
 
 
-## Python Script
+Python Script
+=============
 
+You can just run the python module and - if you install this package - you
+could also start the provided script from the console or your desktop shell.
 
-### Usage
+Usage
+-----
 
-```
-stream_desktop.py [-n|--gui] [-a|-A] [capture options] [stream options]
-stream_desktop.py --version
-stream_desktop.py --help
-```
+Start the package like this ``python -m desktopstreamer [options]``. Or use
+the startup script like this::
 
-### Install
+  stream_desktop [-n|--gui] [-a|-A] [capture options] [stream options]
+  stream_desktop --version
+  stream_desktop --help
 
-You can just run the python script, no need to install any Python
-dependencies.
+To use it in your desktop shell, a ``.desktop`` file is provided.
 
-It requires [avconv][avconv] and [vlc][vlc] thought. Install them like this:
+Install
+-------
 
-  - Debian / Ubuntu: `sudo apt-get install libav-tools vlc`
+The easiest way to install this package is trough `pip`_::
 
-### Setup
+  pip install --user desktopstreamer
+
+Or download the latest `source`_ (or get it trough ``git``) and install it
+like this (from the sources root directory)::
+
+  python setup.py install --user
+
+Dependencies
+~~~~~~~~~~~~
+
+You don't need to install any Python dependencies.
+
+Requirements
+~~~~~~~~~~~~
+
+`avconv`_ and `vlc`_ are required though. Install them like this:
+
+  - Debian / Ubuntu: ``sudo apt-get install libav-tools vlc``
+
+Setup
+-----
 
 You can use the provided `.desktop` files to include the script in your
 desktop shell. Open them in an editor and fill in the correct paths for:
 
-- `Exec` = path to wherever you put the python script
+Settings
+~~~~~~~~
 
-- `Icon` = path to the PNG file you want to use for an icon
+You can use a file to store the settings in a JSON dictionary.
 
-After that, copy them to `~/.local/share/applications/`.
+The default location is ``~/.config/DesktopStreamer/settings.json``. The
+supported keys are the *capture* and *stream* long-options (with ``_`` instead
+of ``-``).
 
-### Settings
+.. code-block:: json
 
-You can use a file to store settings in a JSON dictionary. The default
-location is `~/.config/StreamDesktop/settings.json`. The supported keys
-are the *capture* and *stream* long-options (with `_` instead of `-`).
+  {
+    "port": 420,
+    "res_out": "1280x720"
+  }
 
-``` json
-{
-  "port": 420,
-  "res_out": "1280x720"
-}
-```
+You can create and edit it manually. If you use the ``--save`` option, the
+current settings are stored automatically (previous settings get overwritten).
 
-To create it, you can set the desired options on the commandline once and
-also use `--save`.
+The settings from this file are applied, if you use the ``--load`` option.
 
-This file gets loaded if you use the ``--load`` option.
-
-The provided `.desktop` files use it.
+.. note:: The provided ``.desktop`` file uses it.
 
 
-## Shell Script
+Shell Script
+============
 
-You can source the `stream_desktop.sh` from you `.bash_aliases` or similar to
-get a quick `stream_desktop` command. The python script has more options
-though.
+You can source the ``stream_desktop.sh`` from the `misc/` directory in your
+``.bash_aliases`` or similar to get a quick ``stream_desktop`` command. The
+python script has more options though.
 
 
-[avconv]: http://libav.org/avconv.html
-[vlc]: http://www.videolan.org/vlc/
-[docopt]: http://docopt.org/
+.. _avconv: http://libav.org/avconv.html
+.. _vlc: http://www.videolan.org/vlc/
+.. _source: https://github.com/brutus/Desktop-Streamer/archive/master.zip
