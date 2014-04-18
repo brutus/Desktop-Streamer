@@ -54,7 +54,7 @@ class DesktopStreamer(object):
   """
 
   CFG_FILE = os.path.join(
-    os.path.expanduser('~'), '.config', 'StreamDesktop', 'settings.json'
+    os.path.expanduser('~'), '.config', 'DesktopStreamer', 'settings.json'
   )
 
   COMMANDS = OrderedDict([
