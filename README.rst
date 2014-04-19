@@ -31,8 +31,8 @@ The easiest way to install this package is trough `pip`_::
 
   pip install --user desktopstreamer
 
-Or download the latest `source`_ (or get it trough ``git``) and install it
-like this (from the sources root directory)::
+Or download the latest `source`_ (or get it trough ``git clone ...``) and
+install it like this (from the sources root directory)::
 
   python setup.py install --user
 
@@ -51,8 +51,8 @@ Requirements
 Setup
 -----
 
-You can use the provided `.desktop` files to start the script from your
-desktop shell.
+You can use the provided `.desktop` file and icon from the ``data`` directory
+to start the script from your desktop shell.
 
 Settings
 ~~~~~~~~
@@ -63,6 +63,12 @@ The default location is ``~/.config/DesktopStreamer/settings.json``. The
 supported keys are the *capture* and *stream* long-options (with ``_`` instead
 of ``-``).
 
+To store settings in this file, use the ``--save`` option. If you use it, the
+current settings are stored and previous settings are overwritten. You can
+create and edit it manually too.
+
+Here's some example content:
+
 .. code-block:: json
 
   {
@@ -70,20 +76,20 @@ of ``-``).
     "res_out": "1280x720"
   }
 
-You can create and edit it manually. If you use the ``--save`` option, the
-current settings are stored automatically (previous settings get overwritten).
-
 The settings from this file are applied, if you use the ``--load`` option.
 
-.. note:: The provided ``.desktop`` file uses it.
+.. note::
+
+  The provided ``.desktop`` file uses the ``--load`` option automatically each
+  time.
 
 
 Shell Script
 ============
 
-You can source the ``stream_desktop.sh`` from the `misc/` directory in your
-``.bash_aliases`` or similar to get a quick ``stream_desktop`` command. The
-python script has more options though.
+You can source the ``data/stream_desktop.sh`` in your ``.bash_aliases`` or
+similar to get a quick ``stream_desktop`` command. The python script has more
+options though.
 
 
 .. _avconv: http://libav.org/avconv.html
