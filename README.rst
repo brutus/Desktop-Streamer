@@ -1,6 +1,6 @@
-==============
-Stream Desktop
-==============
+================
+Desktop Streamer
+================
 
 Capture *audio* and *video* from the desktop and stream it to the local
 network using `avconv`_ and `vlc`_.
