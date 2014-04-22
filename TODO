@@ -6,6 +6,8 @@ Interface
 Stream
 ------
 
+- add option to stream to file
+
 - add options for X and Y offsets
 
 - use a less CPU / GPU intensive stream format
