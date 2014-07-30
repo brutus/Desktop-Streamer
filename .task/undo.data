@@ -1,0 +1,27 @@
+time 1406761757
+new [description:"Add a GTK interface ( if GTK is not installed use the TK one instead)." entry:"1406761757" priority:"L" project:"gui" status:"pending" tags:"gtk,tk" uuid:"8c110b70-4c65-4216-ba38-50a728077fd8"]
+---
+time 1406761835
+old [description:"Add a GTK interface ( if GTK is not installed use the TK one instead)." entry:"1406761757" priority:"L" project:"gui" status:"pending" tags:"gtk,tk" uuid:"8c110b70-4c65-4216-ba38-50a728077fd8"]
+new [description:"Add a GTK interface. If GTK is not installed use the TK one instead." entry:"1406761757" modified:"1406761835" priority:"L" project:"gui" status:"pending" tags:"gtk,tk" uuid:"8c110b70-4c65-4216-ba38-50a728077fd8"]
+---
+time 1406761890
+new [description:"Add options to stream to a file." entry:"1406761890" priority:"M" project:"streamer" status:"pending" uuid:"5643e0bb-fdfb-4d16-ac54-18a92ca9e848"]
+---
+time 1406761943
+new [description:"Add options for X and Y offsets. Also width and height." entry:"1406761943" priority:"L" project:"streamer" status:"pending" uuid:"0573b940-8277-42d4-8b86-dde7486956c7"]
+---
+time 1406761972
+old [description:"Add options for X and Y offsets. Also width and height." entry:"1406761943" priority:"L" project:"streamer" status:"pending" uuid:"0573b940-8277-42d4-8b86-dde7486956c7"]
+new [description:"Add options for X and Y offsets. Also width and height." entry:"1406761943" modified:"1406761972" priority:"L" project:"streamer" status:"pending" tags:"screencast" uuid:"0573b940-8277-42d4-8b86-dde7486956c7"]
+---
+time 1406762014
+new [description:"Check if voiceover audio ( headset) is captured." entry:"1406762014" priority:"L" project:"streamer" status:"pending" tags:"screencast" uuid:"f7ff287d-69ff-4aef-945e-fbae5f84e0ed"]
+---
+time 1406762088
+new [description:"Use a less CPU \/ GPU intensive stream format ( keep XBMC compatibillity)." entry:"1406762088" priority:"H" project:"streamer" status:"pending" uuid:"d6bb08c0-8d26-4090-b4a4-370083d7a167"]
+---
+time 1406762131
+old [description:"Use a less CPU \/ GPU intensive stream format ( keep XBMC compatibillity)." entry:"1406762088" priority:"H" project:"streamer" status:"pending" uuid:"d6bb08c0-8d26-4090-b4a4-370083d7a167"]
+new [description:"Use a less CPU \/ GPU intensive stream format - keep XBMC compatibillity." entry:"1406762088" modified:"1406762131" priority:"H" project:"streamer" status:"pending" uuid:"d6bb08c0-8d26-4090-b4a4-370083d7a167"]
+---
