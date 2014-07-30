@@ -21,7 +21,7 @@ __all__ = [
   'parse_arguments', 'show_cli', 'show_gui'
 ]
 
-__version__ = '0.7'
+__version__ = '0.8'
 __author__ = 'Brutus [DMC] <brutus.dmc@googlemail.com>'
 __license__ = 'GNU General Public License v3 or above - '\
               'http://www.opensource.org/licenses/gpl-3.0.html'
