@@ -98,21 +98,6 @@ Contribute
 If you find any bugs, have feature ideas or similar, just use the
 `issue tracker`_ on github.
 
-Todo
-----
-
-`Taskwarrior`_ is used to maintain a list of what needs to be done. The
-database is in the ``.task/`` directory.
-
-To use it instead of your local `Taskwarrior`_ DB you have to tell the
-``task`` command to use that directory. There are a couple of ways to do this:
-
-* There is a ``.taskrc`` file in the root directory. Tell the *task* command
-  to use it like this: ``task rc:.taskrc ...``.
-
-* Or if you don't like the extra typing, point the *TASKRC* environment
-  variable to it, like this: ``export TASKRC="$(pwd)/.taskrc``.
-
 
 .. _avconv: http://libav.org/avconv.html
 .. _vlc: http://www.videolan.org/vlc/
